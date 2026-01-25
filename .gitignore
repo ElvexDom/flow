@@ -12,3 +12,5 @@ wheels/
 # MLflow files
 mlflow.db
 mlruns/
+mlflow-artifacts/
+temp_dataset.csv

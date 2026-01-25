@@ -94,7 +94,7 @@ class FlowManager:
         creation_time = datetime.fromtimestamp(exp_obj.creation_time / 1000)
 
         return {
-            "experiment_id": exp_obj.experiment_id,
+            "id": exp_obj.experiment_id,
             "name": exp_obj.name,
             "artifact_location": exp_obj.artifact_location,
             "lifecycle_stage": exp_obj.lifecycle_stage,
