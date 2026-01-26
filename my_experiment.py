@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import mlflow
 import mlflow.sklearn
-import numpy as np
+from sklearn.linear_model import LogisticRegression
 
 # ------------------------------
 # Charger le dataset
@@ -30,7 +30,7 @@ X[int_cols] = X[int_cols].astype(float)
 # Instanciation des outils
 # ------------------------------
 tools = FlowTools(experiment_name="My Experiment")
-pipeline_tools = PipelineTools(num_features, cat_features, ordinal_features)
+pipeline_tools = PipelineTools(num_features, cat_features, ordinal_features, model_class=LogisticRegression)  # model_class à définir
 
 # ------------------------------
 # Autolog sklearn
@@ -58,21 +58,18 @@ with mlflow.start_run(run_name="pipeline_run", experiment_id=tools.experiment_id
     # Entraînement du pipeline
     pipeline_tools.fit(X_train, y_train)
 
-    # Prédictions probabilistes si supportées
+    # Prédictions
     try:
         y_pred_proba = pipeline_tools.predict_proba(X_test)[:, 1]
     except AttributeError:
         y_pred_proba = None
 
-    # Instanciation de MetricsTools
-    metrics_tool = MetricsTools(y_true=y_test, y_pred_proba=y_pred_proba, params=params)
+    y_pred = pipeline_tools.predict(X_test)
 
-    # Optimisation du seuil si possible
-    if y_pred_proba is not None:
-        best_threshold = metrics_tool.optimize_threshold()
-        print(f"Seuil optimal pour F1 : {best_threshold:.3f}")
-    else:
-        metrics_tool.y_pred = pipeline_tools.predict(X_test)
+    # Instanciation de MetricsTools
+    metrics_tool = MetricsTools(
+        params={**params, "y_true": y_test, "y_pred": y_pred, "y_pred_proba": y_pred_proba, "task": "classification"}
+    )
 
     # Calcul des métriques
     metrics = metrics_tool.compute_metrics()
@@ -81,8 +78,9 @@ with mlflow.start_run(run_name="pipeline_run", experiment_id=tools.experiment_id
     # Log params et metrics dans MLflow
     metrics_tool.log_mlflow()
 
-    # Log des figures : PR, ROC, Confusion Matrix
-    metrics_tool.log_figures_mlflow()
+    # Optionnel : log des figures si la méthode existe
+    if hasattr(metrics_tool, "log_figures_mlflow"):
+        metrics_tool.log_figures_mlflow()
 
     # Affichage des IDs du run
     print(f"Run ID: {run.info.run_id}")

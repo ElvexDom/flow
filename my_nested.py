@@ -85,11 +85,12 @@ with mlflow.start_run(run_name="parent_pipeline_run", experiment_id=tools.experi
                 metrics_tool = MetricsTools(y_true=y_test, y_pred_proba=y_pred_proba, params=params)
 
                 # Optimisation du seuil si applicable
-                if y_pred_proba is not None:
-                    best_threshold = metrics_tool.optimize_threshold()
-                    mlflow.log_metric("best_threshold", best_threshold)
-                else:
-                    metrics_tool.y_pred = pipeline_tools.predict(X_test)
+                # if y_pred_proba is not None:
+                #     best_threshold = metrics_tool.optimize_threshold()
+                #     mlflow.log_metric("best_threshold", best_threshold)
+                # else:
+                #     metrics_tool.y_pred = pipeline_tools.predict(X_test)
+                metrics_tool.y_pred = pipeline_tools.predict(X_test)
 
                 # Calcul des métriques
                 metrics = metrics_tool.compute_metrics()
