@@ -11,7 +11,9 @@ from sklearn.metrics import (
     r2_score,
     silhouette_score,
     davies_bouldin_score,
-    calinski_harabasz_score
+    calinski_harabasz_score,
+    log_loss,
+    roc_auc_score
 )
 
 
@@ -31,7 +33,6 @@ class MetricsTools:
         self.y_pred_proba = self.params.get("y_pred_proba", None)
         self.task = self.params.get("task", "regression")
 
-        # Dictionnaire final des métriques
         self.metrics = {}
 
         # Validation des entrées
@@ -47,50 +48,64 @@ class MetricsTools:
     # --------------------------------------------------
     def compute_metrics(self):
         if self.task == "classification":
-            self.metrics.update({
-                "accuracy": accuracy_score(self.y_true, self.y_pred),
-                "precision": precision_score(
-                    self.y_true, self.y_pred, average="weighted", zero_division=0
-                ),
-                "recall": recall_score(
-                    self.y_true, self.y_pred, average="weighted", zero_division=0
-                ),
-                "f1_score": f1_score(
-                    self.y_true, self.y_pred, average="weighted", zero_division=0
-                )
-            })
+            self.metrics = {}
+
+            self.metrics["precision_score"] = precision_score(
+                self.y_true, self.y_pred, average="weighted", zero_division=0
+            )
+            self.metrics["recall_score"] = recall_score(
+                self.y_true, self.y_pred, average="weighted", zero_division=0
+            )
+            self.metrics["f1_score"] = f1_score(
+                self.y_true, self.y_pred, average="weighted", zero_division=0
+            )
+            self.metrics["accuracy_score"] = accuracy_score(self.y_true, self.y_pred)
+
+            if self.y_pred_proba is not None:
+                y_proba = self.y_pred_proba
+                if y_proba.ndim == 1:
+                    y_proba = np.vstack([1 - y_proba, y_proba]).T
+
+                self.metrics["log_loss"] = float(log_loss(self.y_true, y_proba))
+
+                n_classes = len(np.unique(self.y_true))
+                if n_classes > 2:
+                    self.metrics["roc_auc"] = float(
+                        roc_auc_score(self.y_true, y_proba, multi_class="ovr")
+                    )
+                else:
+                    self.metrics["roc_auc"] = float(roc_auc_score(self.y_true, y_proba[:, 1]))
+            else:
+                self.metrics["log_loss"] = None
+                self.metrics["roc_auc"] = None
+
+            self.metrics["score"] = accuracy_score(self.y_true, self.y_pred)
 
         elif self.task == "regression":
             mse = mean_squared_error(self.y_true, self.y_pred)
-            self.metrics.update({
+            self.metrics = {
                 "MSE": mse,
                 "RMSE": np.sqrt(mse),
                 "MAE": mean_absolute_error(self.y_true, self.y_pred),
                 "R2": r2_score(self.y_true, self.y_pred)
-            })
+            }
 
         elif self.task == "clustering":
             X = self.params.get("X", None)
-
             if X is None:
-                raise ValueError(
-                    "Pour le clustering, les features doivent être fournies via params['X']"
-                )
+                raise ValueError("Pour le clustering, les features doivent être fournies via params['X']")
 
             labels = self.y_pred
             n_clusters = len(np.unique(labels))
-
             if n_clusters < 2:
-                raise ValueError(
-                    "Le clustering doit contenir au moins 2 clusters pour calculer les métriques."
-                )
+                raise ValueError("Le clustering doit contenir au moins 2 clusters pour calculer les métriques.")
 
-            self.metrics.update({
+            self.metrics = {
                 "silhouette_score": silhouette_score(X, labels),
                 "davies_bouldin_score": davies_bouldin_score(X, labels),
                 "calinski_harabasz_score": calinski_harabasz_score(X, labels),
                 "n_clusters": int(n_clusters)
-            })
+            }
 
         else:
             raise ValueError(f"Tâche inconnue : {self.task}")
@@ -105,13 +120,16 @@ class MetricsTools:
         if not self.metrics:
             print("Aucune métrique disponible.")
         for k, v in self.metrics.items():
-            print(f"{k}: {v:.4f}")
+            if isinstance(v, (int, float)):
+                print(f"{k}: {v:.4f}")
+            else:
+                print(f"{k}: {v}")
 
     # --------------------------------------------------
     # Logging MLflow
     # --------------------------------------------------
-    def log_mlflow(self):
-        # Log paramètres (sécurisé)
+    def log_mlflow(self, prefix=None):
+        # Log paramètres
         for k, v in self.params.items():
             if isinstance(v, (str, int, float, bool)):
                 mlflow.log_param(k, v)
@@ -119,8 +137,11 @@ class MetricsTools:
                 mlflow.log_param(k, str(v))
 
         # Log métriques
-        for k, v in self.metrics.items():
-            mlflow.log_metric(f"{self.task}/{k}", float(v))
+        for k in self.metrics.keys():
+            v = self.metrics[k]
+            if isinstance(v, (int, float)):
+                metric_name = f"{prefix}_{k}" if prefix else k
+                mlflow.log_metric(metric_name, float(v))
 
     # --------------------------------------------------
     # Mise à jour params
