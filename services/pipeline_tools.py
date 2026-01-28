@@ -3,6 +3,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 import pandas as pd
 
+from services.utils import monitor_performance
+
 class PipelineTools:
     """
     Pipeline sklearn générique avec prétraitement et modèle configurable.
@@ -49,6 +51,7 @@ class PipelineTools:
         ])
         return pipe
 
+    @monitor_performance
     def fit(self, X: pd.DataFrame, y: pd.Series):
         self.pipeline.fit(X, y)
         return self

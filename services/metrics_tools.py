@@ -82,13 +82,12 @@ class MetricsTools:
             self.metrics["score"] = accuracy_score(self.y_true, self.y_pred)
 
         elif self.task == "regression":
-            mse = mean_squared_error(self.y_true, self.y_pred)
-            self.metrics = {
-                "MSE": mse,
-                "RMSE": np.sqrt(mse),
-                "MAE": mean_absolute_error(self.y_true, self.y_pred),
-                "R2": r2_score(self.y_true, self.y_pred)
-            }
+            self.metrics = {}
+            self.metrics["mean_squared_error"] = mean_squared_error(self.y_true, self.y_pred)
+            self.metrics["mean_absolute_error"] = mean_absolute_error(self.y_true, self.y_pred)
+            self.metrics["r2_score"] = r2_score(self.y_true, self.y_pred)
+            self.metrics["root_mean_squared_error"] = np.sqrt(mean_squared_error(self.y_true, self.y_pred))
+            self.metrics["score"] = r2_score(self.y_true, self.y_pred)
 
         elif self.task == "clustering":
             X = self.params.get("X", None)
