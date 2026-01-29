@@ -7,7 +7,9 @@ from sklearn.metrics import PrecisionRecallDisplay, RocCurveDisplay, ConfusionMa
 class FlowTools:
     """
     Classe utilitaire pour gérer un workflow MLflow complet :
-    logging dataset et figures de métriques (Precision-Recall, ROC, Confusion Matrix).
+    - Logging dataset
+    - Logging figures de classification (Precision-Recall, ROC, Confusion Matrix)
+    - Logging figures de régression (y_true vs y_pred, histogramme des résidus)
     """
 
     def __init__(self, experiment_name: str = None):
@@ -25,6 +27,9 @@ class FlowTools:
             self.experiment = None
             self.experiment_id = None
 
+    # -----------------------------------
+    # Dataset
+    # -----------------------------------
     def log_dataset(self, df: pd.DataFrame, artifact_path: str = "datasets"):
         """
         Log un dataset (DataFrame) dans MLflow.
@@ -37,9 +42,12 @@ class FlowTools:
         print(f"Dataset loggé dans MLflow sous '{artifact_path}'")
         return artifact_path
 
-    def log_metrics_figures(self, y_true, y_pred, prefix: str = "metrics"):
+    # -----------------------------------
+    # Classification
+    # -----------------------------------
+    def log_classification_figures(self, y_true, y_pred, prefix: str = "metrics"):
         """
-        Log les figures : Precision-Recall, ROC, Confusion Matrix.
+        Log les figures de classification : Precision-Recall, ROC, Confusion Matrix.
         """
         # Precision-Recall Curve
         fig_pr = plt.figure()
@@ -62,4 +70,35 @@ class FlowTools:
         mlflow.log_figure(fig_cm, f"{prefix}/confusion_matrix.png")
         plt.close()
 
-        print("Figures de métriques loggées dans MLflow")
+        print("Figures de classification loggées dans MLflow")
+
+    # -----------------------------------
+    # Régression
+    # -----------------------------------
+    def log_regression_figures(self, y_true, y_pred, prefix: str = "regression"):
+        """
+        Log les figures de régression :
+        - y_true vs y_pred
+        - histogramme des résidus
+        """
+        # y_true vs y_pred
+        fig1, ax1 = plt.subplots(figsize=(6,6))
+        ax1.scatter(y_true, y_pred, alpha=0.5)
+        ax1.plot([y_true.min(), y_true.max()],
+                 [y_true.min(), y_true.max()], 'r--')
+        ax1.set_xlabel("y_true")
+        ax1.set_ylabel("y_pred")
+        ax1.set_title("Régression : y_true vs y_pred")
+        mlflow.log_figure(fig1, f"{prefix}/y_true_vs_y_pred.png")
+        plt.close(fig1)
+
+        # Histogramme des résidus
+        residus = y_true - y_pred
+        fig2, ax2 = plt.subplots(figsize=(6,4))
+        sns.histplot(residus, bins=30, kde=True, ax=ax2)
+        ax2.set_xlabel("Erreur (y_true - y_pred)")
+        ax2.set_title("Distribution des résidus")
+        mlflow.log_figure(fig2, f"{prefix}/residuals_histogram.png")
+        plt.close(fig2)
+
+        print("Figures de régression loggées dans MLflow")
