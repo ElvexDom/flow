@@ -53,10 +53,13 @@ class PipelineTools:
 
     @monitor_performance
     def fit(self, X: pd.DataFrame, y: pd.Series):
+        self.mode = "training"
         self.pipeline.fit(X, y)
         return self
 
+    @monitor_performance
     def predict(self, X: pd.DataFrame):
+        self.mode = "testing"
         return self.pipeline.predict(X)
 
     def get_params(self):
