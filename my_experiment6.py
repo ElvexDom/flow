@@ -61,9 +61,18 @@ regressors = {
             "random_state": 42,
         },
     ),
-    # "SVR": (SVR, {"kernel": "rbf", "C": 1.0, "gamma": "scale"}),
-    # "XGBoost": (XGBRegressor, {"tree_method": "hist", "n_estimators": 100, "random_state": 42}),
-    # "LightGBM": (LGBMRegressor, {"n_estimators": 100, "learning_rate": 0.05, "random_state": 42})
+    "SVR": (SVR, {"kernel": "rbf", "C": 1.0, "gamma": "scale"}),
+    "XGBoost": (XGBRegressor, {"tree_method": "hist", "n_estimators": 100, "random_state": 42}),
+    "LightGBM": (
+        LGBMRegressor,
+        {
+            "n_estimators": 100,
+            "learning_rate": 0.05,
+            "random_state": 42,
+            "force_col_wise": True,
+            "verbose": -1
+        }
+    )
 }
 
 # ------------------------------
@@ -85,15 +94,22 @@ for name, (model_class, model_params) in regressors.items():
     with mlflow.start_run(run_name=name, experiment_id=tools.experiment_id):
         print(f"⏳ Training {name}...")
 
+        # ------------------------------
+        # Config dict pour PipelineTools
+        # ------------------------------
+        config = {
+            "num_features": num_features,
+            "cat_features": cat_features,
+            "ordinal_features": ordinal_features,
+            "model_class": model_class,
+            "model_params": model_params
+        }
+
         # Pipeline
         pipe_tools = PipelineTools(
             X=X,
             y=y_scaled if name == "SVR" else y,
-            num_features=num_features,
-            cat_features=cat_features,
-            ordinal_features=ordinal_features,
-            model_class=model_class,
-            model_params=model_params,
+            config=config
         )
 
         # Train / Test

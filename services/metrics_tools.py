@@ -132,8 +132,6 @@ class MetricsTools:
         for k, v in self.params.items():
             if isinstance(v, (str, int, float, bool)):
                 mlflow.log_param(k, v)
-            else:
-                mlflow.log_param(k, str(v))
 
         # Log métriques
         for k in self.metrics.keys():
