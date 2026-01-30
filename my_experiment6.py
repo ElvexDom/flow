@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import mlflow
 import mlflow.sklearn
 
+from sklearn.compose import TransformedTargetRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
@@ -50,27 +51,58 @@ for col in num_features:
 # 3. Modèles
 # ------------------------------
 regressors = {
-    "LinearRegression": (LinearRegression, {}),
-    "RandomForest": (
-        RandomForestRegressor,
+    "LinearRegression": (
+        TransformedTargetRegressor,
         {
-            "n_estimators": 120,
-            "max_depth": 12,
-            "min_samples_split": 12,
-            "min_samples_leaf": 6,
-            "random_state": 42,
-        },
+            "regressor": LinearRegression(),
+            "transformer": None
+        }
     ),
-    "SVR": (SVR, {"kernel": "rbf", "C": 1.0, "gamma": "scale"}),
-    "XGBoost": (XGBRegressor, {"tree_method": "hist", "n_estimators": 100, "random_state": 42}),
-    "LightGBM": (
-        LGBMRegressor,
+    "RandomForest": (
+        TransformedTargetRegressor,
         {
-            "n_estimators": 100,
-            "learning_rate": 0.05,
-            "random_state": 42,
-            "force_col_wise": True,
-            "verbose": -1
+            "regressor": RandomForestRegressor(
+                n_estimators=120,
+                max_depth=12,
+                min_samples_split=12,
+                min_samples_leaf=6,
+                random_state=42,
+            ),
+            "transformer": None
+        }
+    ),
+    "SVR": (
+        TransformedTargetRegressor,
+        {
+            "regressor": SVR(
+                kernel="rbf",
+                C=1.0,
+                gamma="scale"),
+            "transformer": StandardScaler()
+        }
+    ),
+    "XGBoost": (
+        TransformedTargetRegressor,
+        {
+            "regressor": XGBRegressor(
+                tree_method="hist",
+                n_estimators=100,
+                random_state=42
+            ),
+            "transformer": None
+        }
+    ),
+    "LightGBM": (
+        TransformedTargetRegressor,
+        {
+            "regressor": LGBMRegressor(
+                n_estimators=100,
+                learning_rate=0.05,
+                random_state=42,
+                force_col_wise=True,
+                verbose=-1
+            ),
+            "transformer": None
         }
     )
 }
@@ -82,10 +114,6 @@ tools = FlowTools(experiment_name="California Housing Benchmark")
 mlflow.sklearn.autolog(log_models=True, silent=True)
 
 results = []
-
-# Normalisation target pour SVR
-y_scaler = StandardScaler()
-y_scaled = y_scaler.fit_transform(y.values.reshape(-1, 1)).ravel()
 
 # ------------------------------
 # 5. Boucle sur les modèles
@@ -108,7 +136,7 @@ for name, (model_class, model_params) in regressors.items():
         # Pipeline
         pipe_tools = PipelineTools(
             X=X,
-            y=y_scaled if name == "SVR" else y,
+            y=y,
             config=config
         )
 
@@ -120,10 +148,6 @@ for name, (model_class, model_params) in regressors.items():
         # ------------------------------
         preds_train = pipe_tools.predict_train()
         preds_test = pipe_tools.predict_test()
-
-        if name == "SVR":
-            preds_train = y_scaler.inverse_transform(preds_train.reshape(-1, 1)).ravel()
-            preds_test = y_scaler.inverse_transform(preds_test.reshape(-1, 1)).ravel()
 
         # ------------------------------
         # Metrics TRAIN
