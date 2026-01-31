@@ -31,6 +31,8 @@ class PipelineTools:
         # Pipeline pour le preprocessing
         self.pipeline = self._build_pipeline()
 
+        self.model = self.pipeline.named_steps["model"]
+
         # Split
         self.X_train = None
         self.X_test = None
@@ -80,7 +82,7 @@ class PipelineTools:
         self.X_test = pd.DataFrame(X_test_trans, columns=feature_names, index=self.X_test.index)
 
         # Fit uniquement le modèle
-        self.pipeline.named_steps["model"].fit(self.X_train, self.y_train)
+        self.model.fit(self.X_train, self.y_train)
 
         return self
 
@@ -92,7 +94,7 @@ class PipelineTools:
         if self.X_train is None:
             raise RuntimeError("Le pipeline n'a pas encore été entraîné")
         self.mode = "pipeline_predict_train"
-        return self.pipeline.named_steps["model"].predict(self.X_train)
+        return self.model.predict(self.X_train)
 
     # -------------------------------
     # Predict test
@@ -102,13 +104,13 @@ class PipelineTools:
         if self.X_test is None:
             raise RuntimeError("Le pipeline n'a pas encore été entraîné")
         self.mode = "pipeline_predict_test"
-        return self.pipeline.named_steps["model"].predict(self.X_test)
+        return self.model.predict(self.X_test)
 
     # -------------------------------
     # Params
     # -------------------------------
     def get_params(self):
-        model = self.pipeline.named_steps["model"]
+        model = self.model
         return {
             "num_features": self.num_features,
             "cat_features": self.cat_features,
